@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전국 초중고 학교 근처 도서관 검색</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            text-align: center; /* 전체 텍스트 가운데 정렬 */
+        }
+
+        h1 {
+            background-color: #4CAF50; /* 제목 배경색 */
+            color: white; /* 제목 텍스트 색상 */
+            padding: 20px; /* 제목 내부 여백 */
+            border-radius: 8px; /* 제목 테두리 둥글게 */
+        }
+
+        form {
+            display: flex;
+            justify-content: center; /* 검색창을 나란히 배치 */
+            align-items: center;
+            gap: 10px; /* 검색창 간격 조정 */
+            margin: 20px 0;
+        }
+
+        input[type="text"], input[type="number"] {
+            width: 250px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #resultsTable {
+            width: 100%; /* 검색 결과 박스 너비를 90%로 설정 */
+            margin: 0 auto; /* 가운데 정렬 */
+            margin-top: 40px; /* 위쪽 간격 */
+        }
+        table {
+            width: 80%;
+            margin: 0 auto; /* 테이블을 중앙에 정렬 */
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            text-align: left;
+            padding: 12px;
+        }
+
+        th {
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>전국 학교 근처 도서관 검색</h1>
+    <form id="searchForm">
+        <input type="text" id="queryInput" placeholder="학교 이름을 입력하세요" required>
+        <input type="number" id="distanceInput" placeholder="거리를 입력하세요 (숫자)" required>
+        <button type="submit">검색</button>
+    </form>
+
+    <h2>검색 결과:</h2>
+    <div id="resultsTable"></div>
+
+    <script src="test.js"></script>
+</body>
+</html>
