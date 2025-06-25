@@ -22,13 +22,14 @@
 
         form {
             display: flex;
+            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
             gap: 10px;
             margin: 20px 0;
         }
 
-        input[type="text"], input[type="number"] {
+        select, input[type="text"], input[type="number"] {
             width: 250px;
             padding: 10px;
             border: 1px solid #ddd;
@@ -58,6 +59,9 @@
         #resultsTable {
             width: 90%;
             margin: 20px auto;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
         }
 
         table {
@@ -84,13 +88,35 @@
     <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=1igppkmtqd&submodules=geocoder"></script>
 </head>
 <body>
-    <h1>
-        전국 학교 근처 도서관 검색
-        <span style="font-size: 0.5em; color: #f0f0f0;"> | 팀 이름: 인공능지, 팀원: 홍길동, 김철수, 이영희</span>
-    </h1>
+    <h1>전국 학교 근처 도서관 검색</h1>
     <form id="searchForm">
-        <input type="text" id="queryInput" placeholder="학교 이름을 입력하세요" required>
-        <input type="number" id="distanceInput" placeholder="거리를 입력하세요 (숫자)" required>
+        <select id="regionSelect" required>
+            <option value="">지역 선택</option>
+            <option value="서울">서울</option>
+            <option value="부산">부산</option>
+            <option value="대구">대구</option>
+            <option value="인천">인천</option>
+            <option value="광주">광주</option>
+            <option value="대전">대전</option>
+            <option value="울산">울산</option>
+            <option value="경기">경기</option>
+            <option value="강원">강원</option>
+            <option value="충북">충북</option>
+            <option value="충남">충남</option>
+            <option value="전북">전북</option>
+            <option value="전남">전남</option>
+            <option value="경북">경북</option>
+            <option value="경남">경남</option>
+            <option value="제주">제주</option>
+        </select>
+        <select id="schoolTypeSelect" required>
+            <option value="">학교 구분 선택</option>
+            <option value="초등학교">초등학교</option>
+            <option value="중학교">중학교</option>
+            <option value="고등학교">고등학교</option>
+        </select>
+        <input type="text" id="queryInput" placeholder="학교 이름" required>
+        <input type="number" id="distanceInput" placeholder="거리(Km)" required>
         <button type="submit">검색</button>
     </form>
 
@@ -103,7 +129,7 @@
 
         let map;
         let markers = [];
-        let infoWindows = [];
+        let highlightedMarker = null; // 현재 하이라이트된 마커
 
         function initMap() {
             map = new naver.maps.Map('map', {
@@ -112,24 +138,82 @@
             });
         }
 
+        function addMarker(lat, lng, title, color, infoContent) {
+            const marker = new naver.maps.Marker({
+                position: new naver.maps.LatLng(lat, lng),
+                map: map,
+                title: title,
+                icon: {
+                    url: `https://maps.google.com/mapfiles/ms/icons/${color}-dot.png`, // Google Maps 스타일 핀
+                    size: new naver.maps.Size(32, 32), // 핀 크기
+                    anchor: new naver.maps.Point(16, 32), // 핀 앵커 지점 설정
+                }
+            });
+
+            const infoWindow = new naver.maps.InfoWindow({
+                content: `<div style="padding:10px;"><strong>${title}</strong><br>${infoContent}</div>`
+            });
+
+            naver.maps.Event.addListener(marker, 'click', function () {
+                infoWindow.open(map, marker);
+            });
+
+            markers.push(marker);
+
+            return marker;
+        }
+
+        function clearMarkers() {
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+            if (highlightedMarker) {
+                highlightedMarker.setIcon({
+                    url: `https://maps.google.com/mapfiles/ms/icons/blue-dot.png`, // 파란색 핀으로 복원
+                    size: new naver.maps.Size(32, 32),
+                    anchor: new naver.maps.Point(16, 32),
+                });
+                highlightedMarker = null;
+            }
+        }
+
+        function highlightMarker(marker) {
+            if (highlightedMarker) {
+                highlightedMarker.setIcon({
+                    url: `https://maps.google.com/mapfiles/ms/icons/blue-dot.png`, // 파란색 핀으로 복원
+                    size: new naver.maps.Size(32, 32),
+                    anchor: new naver.maps.Point(16, 32),
+                });
+            }
+
+            marker.setIcon({
+                url: `https://maps.google.com/mapfiles/ms/icons/yellow-dot.png`, // 노란색 핀으로 변경
+                size: new naver.maps.Size(32, 32),
+                anchor: new naver.maps.Point(16, 32),
+            });
+
+            highlightedMarker = marker;
+        }
+
         document.getElementById('searchForm').addEventListener('submit', function (event) {
             event.preventDefault();
 
+            const region = document.getElementById('regionSelect').value;
+            const schoolType = document.getElementById('schoolTypeSelect').value;
             const query = document.getElementById('queryInput').value;
             const distance = document.getElementById('distanceInput').value;
             const resultsContainer = document.getElementById('resultsTable');
+
+            if (!region || !schoolType) {
+                alert("지역과 학교 구분을 선택하세요.");
+                return;
+            }
 
             resultsContainer.innerHTML = "";
 
             const url = `${kcisaApiUrl}?serviceKey=${kcisaServiceKey}&numOfRows=100&pageNo=1&schNm=${encodeURIComponent(query)}&dist=${distance}&type=xml`;
 
             fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP 오류 발생: ${response.status}`);
-                    }
-                    return response.text();
-                })
+                .then(response => response.text())
                 .then(xmlText => {
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(xmlText, "text/xml");
@@ -139,11 +223,9 @@
 
                     if (items.length > 0) {
                         const table = document.createElement("table");
-
                         const thead = document.createElement("thead");
                         const headerRow = document.createElement("tr");
-                        const headers = ["번호", "학교", "도서관", "주소", "운영일", "열람좌석"];
-                        headers.forEach(header => {
+                        ["학교", "도서관", "주소", "운영일", "열람좌석"].forEach(header => {
                             const th = document.createElement("th");
                             th.textContent = header;
                             headerRow.appendChild(th);
@@ -153,58 +235,54 @@
 
                         const tbody = document.createElement("tbody");
 
-                        Array.from(items).forEach((item, index) => {
-                            const row = document.createElement("tr");
+                        Array.from(items).forEach(item => {
+                            const schoolName = item.getElementsByTagName("schNm")[0]?.textContent || "정보 없음";
+                            const libraryName = item.getElementsByTagName("fcltyNm")[0]?.textContent || "정보 없음";
+                            const address = item.getElementsByTagName("fcltyRoadNmAddr")[0]?.textContent || "정보 없음";
+                            const description = item.getElementsByTagName("description")[0]?.textContent || "정보 없음";
+                            const subDescription = item.getElementsByTagName("subDescription")[0]?.textContent || "정보 없음";
 
-                            const schoolName = item.getElementsByTagName("schNm")[0]?.textContent || "학교 정보 없음";
-                            const libraryName = item.getElementsByTagName("fcltyNm")[0]?.textContent || "도서관 정보 없음";
-                            const address = item.getElementsByTagName("fcltyRoadNmAddr")[0]?.textContent || "주소 정보 없음";
-                            const description = item.getElementsByTagName("description")[0]?.textContent || "운영일 정보 없음";
-                            const subDescription = item.getElementsByTagName("subDescription")[0]?.textContent || "열람 좌석 정보 없음";
                             const lat = parseFloat(item.getElementsByTagName("schLatPos")[0]?.textContent || "0");
                             const lng = parseFloat(item.getElementsByTagName("schLotPos")[0]?.textContent || "0");
 
-                            const data = [index + 1, schoolName, libraryName, address, description, subDescription];
-                            data.forEach(cellData => {
+                            if (!address.includes(region)) return;
+                            if (!schoolName.includes(schoolType)) return;
+
+                            const row = document.createElement("tr");
+                            [schoolName, libraryName, address, description, subDescription].forEach(cellData => {
                                 const td = document.createElement("td");
                                 td.textContent = cellData;
                                 row.appendChild(td);
                             });
                             tbody.appendChild(row);
 
+                            let schoolMarker = null;
+                            let libraryMarker = null;
+
                             if (!isNaN(lat) && !isNaN(lng)) {
-                                const schoolMarker = new naver.maps.Marker({
-                                    position: new naver.maps.LatLng(lat, lng),
-                                    map: map,
-                                    title: schoolName,
-                                    icon: {
-                                        content: `
-                                            <div style="
-                                                width: 20px;
-                                                height: 20px;
-                                                background-color: red;
-                                                border-radius: 50%;
-                                                border: 2px solid white;
-                                                box-shadow: 0 0 5px rgba(0,0,0,0.5);
-                                            "></div>
-                                        `,
-                                        anchor: new naver.maps.Point(10, 10),
-                                    },
-                                });
-
-                                markers.push(schoolMarker);
-
-                                const schoolInfoWindow = new naver.maps.InfoWindow({
-                                    content: `<div><strong>${schoolName}</strong><br>학교 위치</div>`,
-                                });
-
-                                row.addEventListener('click', () => {
-                                    map.panTo(new naver.maps.LatLng(lat, lng));
-                                    map.setZoom(15); // 지도 확대
-                                    document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'start' }); // 지도 스크롤 이동
-                                    schoolInfoWindow.open(map, schoolMarker);
-                                });
+                                schoolMarker = addMarker(lat, lng, schoolName, "red", address);
                             }
+
+                            row.addEventListener('click', () => {
+                                if (schoolMarker) {
+                                    map.panTo(schoolMarker.getPosition());
+                                    highlightMarker(schoolMarker);
+                                }
+                            });
+
+                            naver.maps.Service.geocode({ query: address }, (status, response) => {
+                                if (status === naver.maps.Service.Status.OK) {
+                                    const result = response.v2.addresses[0];
+                                    const libraryLat = parseFloat(result.y);
+                                    const libraryLng = parseFloat(result.x);
+                                    libraryMarker = addMarker(libraryLat, libraryLng, libraryName, "blue", address); // 도서관은 파란색 핀
+
+                                    row.addEventListener('click', () => {
+                                        map.panTo(libraryMarker.getPosition());
+                                        highlightMarker(libraryMarker);
+                                    });
+                                }
+                            });
                         });
 
                         table.appendChild(tbody);
@@ -213,18 +291,8 @@
                         resultsContainer.innerHTML = "<p>검색 결과가 없습니다.</p>";
                     }
                 })
-                .catch(error => {
-                    console.error("오류 발생:", error);
-                    resultsContainer.innerHTML = `<p>오류 발생: ${error.message}</p>`;
-                });
+                .catch(error => console.error("오류 발생:", error));
         });
-
-        function clearMarkers() {
-            markers.forEach(marker => marker.setMap(null));
-            markers = [];
-            infoWindows.forEach(win => win.close());
-            infoWindows = [];
-        }
 
         initMap();
     </script>
