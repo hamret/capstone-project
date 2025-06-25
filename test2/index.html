@@ -89,8 +89,8 @@
         <span style="font-size: 0.5em; color: #f0f0f0;"> | 팀 이름: 인공능지, 팀원: 홍길동, 김철수, 이영희</span>
     </h1>
     <form id="searchForm">
-        <input type="text" id="queryInput" placeholder="학교 이름을 입력하세요" required>
-        <input type="number" id="distanceInput" placeholder="거리를 입력하세요 (숫자)" required>
+        <input type="text" id="queryInput" placeholder="학교 이름" required>
+        <input type="number" id="distanceInput" placeholder="거리(Km)" required>
         <button type="submit">검색</button>
     </form>
 
@@ -173,36 +173,66 @@
                             tbody.appendChild(row);
 
                             if (!isNaN(lat) && !isNaN(lng)) {
-                                const schoolMarker = new naver.maps.Marker({
-                                    position: new naver.maps.LatLng(lat, lng),
-                                    map: map,
-                                    title: schoolName,
-                                    icon: {
-                                        content: `
-                                            <div style="
-                                                width: 20px;
-                                                height: 20px;
-                                                background-color: red;
-                                                border-radius: 50%;
-                                                border: 2px solid white;
-                                                box-shadow: 0 0 5px rgba(0,0,0,0.5);
-                                            "></div>
-                                        `,
-                                        anchor: new naver.maps.Point(10, 10),
-                                    },
-                                });
+    const schoolMarker = new naver.maps.Marker({
+        position: new naver.maps.LatLng(lat, lng),
+        map: map,
+        title: schoolName,
+        icon: {
+            content: `
+                <div style="
+                    width: 20px;
+                    height: 20px;
+                    background-color: red;
+                    border-radius: 50%;
+                    border: 2px solid white;
+                    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+                "></div>
+            `,
+            anchor: new naver.maps.Point(10, 10), // 중심점
+        },
+    });
 
-                                markers.push(schoolMarker);
+    markers.push(schoolMarker);
 
-                                const schoolInfoWindow = new naver.maps.InfoWindow({
-                                    content: `<div><strong>${schoolName}</strong><br>학교 위치</div>`,
-                                });
+    const schoolInfoWindow = new naver.maps.InfoWindow({
+        content: `<div><strong>${schoolName}</strong><br>학교 위치</div>`,
+    });
 
-                                row.addEventListener('click', () => {
-                                    map.panTo(new naver.maps.LatLng(lat, lng));
-                                    map.setZoom(15); // 지도 확대
-                                    document.getElementById('map').scrollIntoView({ behavior: 'smooth', block: 'start' }); // 지도 스크롤 이동
-                                    schoolInfoWindow.open(map, schoolMarker);
+    row.addEventListener('click', () => {
+        map.panTo(new naver.maps.LatLng(lat, lng));
+        schoolInfoWindow.open(map, schoolMarker);
+    });
+}
+
+
+                            if (address) {
+                                naver.maps.Service.geocode({ query: address }, (status, response) => {
+                                    if (status === naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
+                                        const result = response.v2.addresses[0];
+                                        const libraryLat = parseFloat(result.y);
+                                        const libraryLng = parseFloat(result.x);
+
+                                        const libraryMarker = new naver.maps.Marker({
+                                            position: new naver.maps.LatLng(libraryLat, libraryLng),
+                                            map: map,
+                                            title: libraryName,
+                                        });
+
+                                        markers.push(libraryMarker);
+
+                                        const libraryInfoWindow = new naver.maps.InfoWindow({
+                                            content: `<div><strong>${libraryName}</strong><br>${address}</div>`,
+                                        });
+
+                                        naver.maps.Event.addListener(libraryMarker, "click", () => {
+                                            libraryInfoWindow.open(map, libraryMarker);
+                                        });
+
+                                        row.addEventListener('click', () => {
+                                            map.panTo(new naver.maps.LatLng(libraryLat, libraryLng));
+                                            libraryInfoWindow.open(map, libraryMarker);
+                                        });
+                                    }
                                 });
                             }
                         });
