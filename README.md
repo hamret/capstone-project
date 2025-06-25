@@ -1,4 +1,4 @@
-# capstone-project
-캡스톤프로젝트 헬스 API 
+# capstone-projec
+네이버 지도 api 활용한 도서관 위치 찾기 프로젝트
 
-2024/11/26 웹디자인 시작
+업데이트 예정
